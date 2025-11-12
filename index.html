@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WESTPINE.FUN</title>
+    <!-- Load Tailwind CSS for styling --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font --><style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff; 
+            color: #1f2937; 
+        }
+        
+        /* Custom styles to mimic the NEAL.FUN tile appearance */
+        .neal-tile {
+            background-color: #ffffff;
+            border: 2px solid #1f2937; /* Thick dark border */
+            box-shadow: 2px 2px 0 0 #1f2937; /* Simple drop shadow */
+            transition: all 0.1s ease-in-out;
+            cursor: pointer;
+            text-align: center; /* Center content in tiles for better visual appeal */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 150px; /* Ensure tiles look good on mobile */
+            padding: 1.5rem; /* Consistent padding */
+        }
+        .neal-tile:hover {
+            transform: translate(-2px, -2px); /* Lift and shift on hover */
+            box-shadow: 4px 4px 0 0 #1f2937;
+        }
+
+        /* Styling for the main header text */
+        .header-text {
+            font-size: 2.5rem; /* Large font */
+            font-weight: 900; /* Extra bold */
+        }
+
+        /* Styling for 2048 game board on the home page */
+        #board-2048-container {
+            cursor: default; /* Keep 2048 non-link */
+            text-align: left;
+        }
+        #board-2048-container:hover {
+            transform: none !important;
+            box-shadow: 2px 2px 0 0 #1f2937 !important;
+        }
+
+        /* Tile content styling */
+        .tile-content {
+            font-size: 1.5rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        /* Specific styles for colored tiles */
+        .tile-blue { background-color: #dbeafe; border-color: #2563eb; }
+        .tile-blue:hover { box-shadow: 4px 4px 0 0 #2563eb; }
+
+        .tile-green { background-color: #dcfce7; border-color: #10b981; }
+        .tile-green:hover { box-shadow: 4px 4px 0 0 #10b981; }
+
+        .tile-red { background-color: #fee2e2; border-color: #ef4444; }
+        .tile-red:hover { box-shadow: 4px 4px 0 0 #ef4444; }
+
+        .tile-yellow { background-color: #fefce8; border-color: #eab308; }
+        .tile-yellow:hover { box-shadow: 4px 4px 0 0 #eab308; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#2563eb',
+                        'primary-green': '#10b981',
+                        'primary-red': '#ef4444',
+                        'primary-yellow': '#eab308', // Added yellow for new tiles
+                    }
+                }
+            }
+        }
+
+        // --- CORE APPLICATION LOGIC ---
+        let currentPage = 'home';
+        const APP_ID = 'WESTPINE_FUN_V1';
+
+        // Expanded Mock game data. ALL these games now appear as tiles.
+        const externalGames = [
+            // Internal links / Info pages
+            { id: '2048', name: "2048 (Built-in)", url: 'internal:2048', icon: "🔢", primary: true, internal: true, specialClass: 'tile-blue' },
+            { id: 'gamelist', name: "The Game List", url: 'internal:gamelist', icon: "📚", primary: true, internal: true, specialClass: 'tile-green' },
+            
+            // Primary Game Tiles (More diverse and "unblocked-friendly")
+            { id: 'chess', name: "Play Chess", url: "https://www.chess.com/play/computer", icon: "♟️", primary: true, specialClass: 'tile-blue' }, // Popular, often unblocked
+            { id: 'sudoku', name: "Daily Sudoku", url: "https://sudoku.com/", icon: "🧠", primary: true, specialClass: 'tile-yellow' }, // Classic puzzle
+            { id: 'doodlejump', name: "Doodle Jump HTML5", url: "https://www.google.com/search?q=doodle+jump+html5&rlz=1C5CHFA_enUS1046US1046&oq=doodle+jump+html5&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIGCAEQRRhAMgYIAhBFGDzSAQc0NjZqMGoxqAIAsAIA&sourceid=chrome&ie=UTF-8", icon: "⬆️", primary: true, specialClass: 'tile-green' }, // Fun platformer
+            { id: '2dgameengine', name: "2D Game Engine (Sandbox)", url: "https://play.htmlgamepad.com/", icon: "⚙️", primary: true, specialClass: 'tile-red' }, // Interactive coding/game making
+            { id: 'typeracer', name: "TypeRacer (unblocked)", url: "https://play.typeracer.com/", icon: "⌨️", primary: true, specialClass: 'tile-blue' }, // Educational & competitive typing
+            { id: 'retrobowl', name: "Retro Bowl", url: "https://retrobowl.me/", icon: "🏈", primary: true, specialClass: 'tile-green' }, // Popular sports game
+            { id: 'paperio', name: "Paper.io 2", url: "https://paper-io.com/", icon: "🎨", primary: true, specialClass: 'tile-yellow' }, // Addictive multiplayer (if domain is unblocked)
+            { id: 'slimevolley', name: "Slime Volleyball", url: "https://www.slimevolley.com/slimevolley/", icon: "🏐", primary: true, specialClass: 'tile-red' }, // Classic 2-player fun
+
+            // Secondary Games (for the full list)
+            { id: 'geoguessr', name: "GeoGuessr (Free)", url: "https://www.geoguessr.com/free", icon: "🌎", primary: false, specialClass: 'tile-blue' }, // Geography quiz
+            { id: 'minesweeper', name: "Minesweeper", url: "https://minesweeper.online/", icon: "💣", primary: false, specialClass: 'tile-green' },
+            { id: 'wordle', name: "Wordle", url: "https://www.nytimes.com/games/wordle/index.html", icon: "🔠", primary: false, specialClass: 'tile-yellow' },
+            { id: 'flappybird', name: "Flappy Bird (HTML5)", url: "https://flappybird.io/", icon: "🐦", primary: false, specialClass: 'tile-red' },
+            { id: 'cookieclicker', name: "Cookie Clicker", url: "https://orteil.dashnet.org/cookieclicker/", icon: "🍪", primary: false, specialClass: 'tile-blue' },
+            { id: 'towerblocks', name: "Tower Blocks", url: "https://www.addictinggames.com/puzzle/tower-blocks", icon: "🏗️", primary: false, specialClass: 'tile-green' },
+        ];
+
+        function showPage(pageId, gameUrl = null, gameName = null) {
+            currentPage = pageId;
+            const pages = document.querySelectorAll('[data-page]');
+            pages.forEach(page => {
+                page.classList.add('hidden');
+            });
+            document.getElementById(pageId).classList.remove('hidden');
+
+            if (pageId === 'game-iframe' && gameUrl && gameName) {
+                const iframe = document.getElementById('game-iframe-element');
+                // For direct Google Search embeds (like Doodle Jump), might need to adjust URL or warn user
+                if (gameUrl.includes("google.com/search?q=doodle+jump")) {
+                     document.getElementById('iframe-game-name').textContent = gameName + " (May require clicking a link inside)";
+                } else {
+                    document.getElementById('iframe-game-name').textContent = gameName;
+                }
+                iframe.src = gameUrl;
+                document.getElementById('game-iframe').classList.remove('hidden');
+            } else if (pageId === 'home') {
+                 // Restart 2048 when returning to home
+                 if (typeof initialize2048 === 'function') {
+                    initialize2048();
+                 }
+            } else if (pageId === 'game-list') {
+                createGameList(externalGames.filter(g => !g.internal)); // Show ALL external games
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Handles click on any tile
+        function handleTileClick(gameId) {
+            const game = externalGames.find(g => g.id === gameId);
+            if (!game) return;
+
+            if (game.url === 'internal:gamelist') {
+                showPage('game-list');
+            } else if (game.url === 'internal:2048') {
+                 // 2048 is fixed on the home page, so clicking its tile does nothing but re-focus
+                 // Or we could scroll to it: document.getElementById('board-2048-container').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                showPage('game-iframe', game.url, game.name);
+            }
+        }
+
+
+        function createGameList(games) {
+            const container = document.getElementById('game-list-container');
+            container.innerHTML = '';
+            
+            if (games.length === 0) {
+                 container.innerHTML = `<p class="text-xl text-gray-500 text-center py-10">No games are currently available in the extended list.</p>`;
+                 return;
+            }
+
+            // Sort games alphabetically by name
+            games.sort((a, b) => a.name.localeCompare(b.name));
+
+            games.forEach(game => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-4 bg-white rounded-xl shadow-md border border-gray-300 transition duration-300 hover:bg-gray-50 cursor-pointer';
+                item.onclick = () => showPage('game-iframe', game.url, game.name);
+
+                // Determine if the game is also a primary tile for user context
+                const tag = game.primary ? 
+                    '<span class="text-xs font-semibold px-2 py-0.5 bg-primary-blue text-white rounded-full ml-3">Homepage Tile</span>' :
+                    '<span class="text-xs font-semibold px-2 py-0.5 bg-gray-400 text-gray-800 rounded-full ml-3">List Only</span>';
+
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <span class="text-3xl">${game.icon}</span>
+                        <div class="flex flex-col">
+                            <span class="text-xl font-bold text-gray-900">${game.name} ${tag}</span>
+                            <span class="text-sm text-gray-500">External Embed (Click to Play)</span>
+                        </div>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // --- 2048 GAME LOGIC ---
+
+        let board2048;
+        let score2048 = 0;
+        const size = 4; // 4x4 board
+        let isGameOver = false;
+
+        function initialize2048() {
+            board2048 = Array(size).fill(0).map(() => Array(size).fill(0));
+            score2048 = 0;
+            isGameOver = false;
+            document.getElementById('score-2048').textContent = score2048;
+            document.getElementById('game-message-2048').classList.add('hidden');
+            addRandomTile();
+            addRandomTile();
+            renderBoard();
+        }
+
+        function addRandomTile() {
+            if (isGameOver) return;
+            let availableCells = [];
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (board2048[r][c] === 0) {
+                        availableCells.push({ r, c });
+                    }
+                }
+            }
+            if (availableCells.length > 0) {
+                const cell = availableCells[Math.floor(Math.random() * availableCells.length)];
+                board2048[cell.r][cell.c] = Math.random() < 0.9 ? 2 : 4;
+            } else {
+                checkGameOver();
+            }
+        }
+
+        function getTileColor(value) {
+            // Colors optimized for a light background
+            switch (value) {
+                case 2: return 'bg-gray-200 text-gray-700';
+                case 4: return 'bg-yellow-100 text-gray-700';
+                case 8: return 'bg-orange-300 text-white';
+                case 16: return 'bg-orange-400 text-white';
+                case 32: return 'bg-red-400 text-white';
+                case 64: return 'bg-red-500 text-white';
+                case 128: return 'bg-blue-300 text-white';
+                case 256: return 'bg-blue-400 text-white';
+                case 512: return 'bg-purple-400 text-white';
+                case 1024: return 'bg-purple-500 text-white';
+                case 2048: return 'bg-primary-red text-white shadow-xl shadow-primary-red/50';
+                default: return 'bg-gray-100'; // Lighter empty cell
+            }
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById('board-2048');
+            boardElement.innerHTML = '';
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const value = board2048[r][c];
+                    const tile = document.createElement('div');
+                    tile.className = `w-full h-full flex items-center justify-center font-bold text-3xl rounded-lg transition-all duration-150 ${getTileColor(value)}`;
+                    tile.textContent = value === 0 ? '' : value;
+                    boardElement.appendChild(tile);
+                }
+            }
+        }
+
+        function move(direction) {
+            if (isGameOver) return;
+            let moved = false;
+            let newScore = score2048;
+            let newBoard = board2048.map(row => [...row]);
+
+            const transpose = (matrix) => matrix[0].map((_, i) => matrix.map(row => row[i]));
+            const reverse = (matrix) => matrix.map(row => [...row].reverse());
+
+            // Helper function to process one row/column (slide and merge)
+            const processLine = (line) => {
+                let newLine = line.filter(val => val !== 0);
+                let originalLength = newLine.length;
+
+                for (let i = 0; i < newLine.length - 1; i++) {
+                    if (newLine[i] === newLine[i + 1]) {
+                        newLine[i] *= 2;
+                        newScore += newLine[i];
+                        newLine.splice(i + 1, 1);
+                        i--; // Check the new element next
+                    }
+                }
+                while (newLine.length < size) {
+                    newLine.push(0);
+                }
+                return { line: newLine, moved: originalLength !== newLine.length || line.some((val, i) => val !== newLine[i]) };
+            };
+
+            let transformedBoard = newBoard;
+
+            if (direction === 'left' || direction === 'right') {
+                if (direction === 'right') {
+                    transformedBoard = reverse(transformedBoard);
+                }
+
+                for (let r = 0; r < size; r++) {
+                    const result = processLine(transformedBoard[r]);
+                    if (result.moved) moved = true;
+                    transformedBoard[r] = result.line;
+                }
+
+                if (direction === 'right') {
+                    transformedBoard = reverse(transformedBoard);
+                }
+            } else if (direction === 'up' || direction === 'down') {
+                transformedBoard = transpose(transformedBoard);
+                if (direction === 'down') {
+                    transformedBoard = reverse(transformedBoard);
+                }
+
+                for (let c = 0; c < size; c++) {
+                    const result = processLine(transformedBoard[c]);
+                    if (result.moved) moved = true;
+                    transformedBoard[c] = result.line;
+                }
+
+                if (direction === 'down') {
+                    transformedBoard = reverse(transformedBoard);
+                }
+                transformedBoard = transpose(transformedBoard);
+            }
+
+            if (moved) {
+                board2048 = transformedBoard;
+                score2048 = newScore;
+                document.getElementById('score-2048').textContent = score2048;
+                addRandomTile();
+                renderBoard();
+                checkGameOver();
+            }
+        }
+
+        function checkGameOver() {
+            // Check for available moves (empty tiles or mergeable tiles)
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (board2048[r][c] === 0) return; // Has empty tile, not over
+                    const val = board2048[r][c];
+                    // Check neighbors for merge possibility
+                    if (r < size - 1 && board2048[r + 1][c] === val) return; // Down
+                    if (c < size - 1 && board2048[r][c + 1] === val) return; // Right
+                }
+            }
+            // If we reached here, no empty tiles and no merge moves possible. Game Over.
+            isGameOver = true;
+            document.getElementById('game-message-2048').textContent = 'Game Over! Score: ' + score2048;
+            document.getElementById('game-message-2048').classList.remove('hidden');
+        }
+
+        // Keyboard and touch listeners
+        function handleKey(event) {
+            // Only allow input for 2048 if we are on the home page
+            if (currentPage === 'home') {
+                 switch (event.key) {
+                    case 'ArrowUp':
+                    case 'w':
+                        move('up');
+                        break;
+                    case 'ArrowDown':
+                    case 's':
+                        move('down');
+                        break;
+                    case 'ArrowLeft':
+                    case 'a':
+                        move('left');
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                        move('right');
+                        break;
+                    default:
+                        return; // Ignore other keys
+                }
+                event.preventDefault(); // Prevent scrolling
+            }
+        }
+
+        // Swipe logic for touch devices
+        let touchstartX = 0;
+        let touchstartY = 0;
+        const gameContainer = () => document.getElementById('board-2048-container');
+
+        function handleTouchStart(event) {
+            const container = gameContainer();
+            // Only register touch start if we're on the home page and touching the game area
+            if (currentPage !== 'home' || !container.contains(event.target)) return;
+            touchstartX = event.touches[0].clientX;
+            touchstartY = event.touches[0].clientY;
+            event.preventDefault();
+        }
+
+        function handleTouchEnd(event) {
+            const container = gameContainer();
+            if (currentPage !== 'home' || !container.contains(event.target)) return;
+
+            const touchendX = event.changedTouches[0].clientX;
+            const touchendY = event.changedTouches[0].clientY;
+
+            const dx = touchendX - touchstartX;
+            const dy = touchendY - touchstartY;
+
+            const sensitivity = 50; // Minimum distance to register a swipe
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal swipe
+                if (Math.abs(dx) > sensitivity) {
+                    dx > 0 ? move('right') : move('left');
+                }
+            } else {
+                // Vertical swipe
+                if (Math.abs(dy) > sensitivity) {
+                    dy > 0 ? move('down') : move('up');
+                }
+            }
+            event.preventDefault();
+        }
+        
+        // --- INITIALIZATION ---
+
+        window.onload = () => {
+            document.addEventListener('keydown', handleKey);
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            // Initial call to setup
+            initialize2048();
+            showPage('home');
+        };
+
+    </script>
+</head>
+<body>
+
+    <!-- Header Navigation --><header class="bg-white shadow-md sticky top-0 z-10 border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col justify-center items-center">
+            <div onclick="showPage('home')" class="cursor-pointer text-center">
+                <h1 class="header-text text-gray-900">
+                    WESTPINE.FUN
+                </h1>
+                <p class="text-sm text-gray-600">games and stuff by Westpine</p>
+            </div>
+            <!-- Mobile Menu Toggle --><button class="absolute top-4 right-4 md:hidden text-gray-600 hover:text-gray-900 p-2 rounded-lg" id="mobile-menu-toggle">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </div>
+        <!-- Mobile Menu --><div id="mobile-menu" class="hidden md:hidden px-4 pb-4 space-y-2 bg-white border-t border-gray-200">
+            <button class="block w-full text-left text-gray-600 hover:text-gray-900 transition duration-200" onclick="showPage('home'); document.getElementById('mobile-menu').classList.add('hidden')">Home</button>
+            <button class="block w-full text-left text-gray-600 hover:text-gray-900 transition duration-200" onclick="showPage('about'); document.getElementById('mobile-menu').classList.add('hidden')">About</button>
+            <button class="block w-full text-left text-gray-600 hover:text-gray-900 transition duration-200" onclick="showPage('changelog'); document.getElementById('mobile-menu').classList.add('hidden')">Changelog</button>
+            <button class="block w-full text-left text-gray-600 hover:text-gray-900 transition duration-200" onclick="showPage('feedback'); document.getElementById('mobile-menu').classList.add('hidden')">Feedback</button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        <!-- Home Page (data-page) --><section id="home" data-page="home" class="hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- Dynamic Game/Link Tiles --><script>
+                    const homeGrid = document.querySelector('#home > .grid');
+                    const primaryGames = externalGames.filter(g => g.primary);
+                    
+                    // Create tiles for all primary games
+                    primaryGames.forEach(game => {
+                        const tileDiv = document.createElement('div');
+                        
+                        // Use special styling if defined, otherwise use default
+                        const tileClasses = game.specialClass ? 
+                            `neal-tile ${game.specialClass}` : 
+                            'neal-tile';
+
+                        // 2048 has its own unique structure and is not a simple click link
+                        if (game.id === '2048') {
+                            tileDiv.id = 'board-2048-container';
+                            tileDiv.className = `sm:col-span-2 lg:col-span-2 ${tileClasses}`;
+                            tileDiv.innerHTML = `
+                                <div class="w-full">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="text-2xl font-bold ${game.specialClass ? 'text-white' : 'text-gray-900'}">2048 (In-Browser)</h3>
+                                        <div class="flex space-x-3 items-center">
+                                            <div class="text-xl font-semibold ${game.specialClass ? 'text-white' : 'text-gray-900'}">Score: <span id="score-2048" class="text-primary-green">0</span></div>
+                                            <button onclick="initialize2048()" class="bg-primary-green hover:bg-green-600 text-white font-bold py-1 px-3 rounded-full text-sm transition shadow-md">
+                                                New Game
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div id="game-message-2048" class="hidden text-center text-2xl font-extrabold p-4 rounded-lg bg-primary-red text-white mb-4"></div>
+
+                                    <div id="board-2048" class="grid grid-cols-4 gap-3 bg-gray-300 p-3 rounded-md aspect-square w-full">
+                                        <!-- 2048 Tiles will be rendered here --></div>
+                                    <p class="text-sm text-gray-500 mt-4 text-center">Use **WASD** or **Arrow Keys** (or Swipe on mobile) to play.</p>
+                                </div>
+                            `;
+                        } else {
+                            tileDiv.onclick = () => handleTileClick(game.id);
+                            tileDiv.className = tileClasses;
+                            tileDiv.innerHTML = `
+                                <span class="text-5xl mb-4">${game.icon}</span>
+                                <span class="tile-content font-bold">${game.name}</span>
+                            `;
+                        }
+                        homeGrid.appendChild(tileDiv);
+                    });
+                </script>
+                
+                <!-- Static Link Tiles (About, Changelog, Feedback) --><div class="neal-tile p-6 rounded-xl tile-blue" onclick="showPage('about')">
+                    <span class="text-4xl mb-3 block">💡</span>
+                    <h3 class="text-xl font-bold text-gray-900">About Westpine.fun</h3>
+                </div>
+
+                <div class="neal-tile p-6 rounded-xl tile-green" onclick="showPage('changelog')">
+                    <span class="text-4xl mb-3 block">📜</span>
+                    <h3 class="text-xl font-bold text-gray-900">Changelog</h3>
+                </div>
+
+                <div class="neal-tile p-6 rounded-xl tile-red" onclick="showPage('feedback')">
+                    <span class="text-4xl mb-3 block">🗣️</span>
+                    <h3 class="text-xl font-bold text-gray-900">Suggestions & Feedback</h3>
+                </div>
+
+            </div>
+        </section>
+        <!-- /Home Page --><!-- Game List Page (data-page) --><section id="game-list" data-page="game-list" class="hidden">
+            <h2 class="text-4xl font-extrabold mb-8 text-primary-green">The Complete Game List</h2>
+            <p class="text-gray-600 mb-8">This list includes all the games available on Westpine.fun. Remember to update placeholder URLs with working embeds!</p>
+            <div id="game-list-container" class="space-y-4">
+                <!-- Game items will be populated by JavaScript --></div>
+            <div class="flex justify-center mt-8">
+                 <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg text-sm transition shadow-md" onclick="showPage('home')">
+                    &larr; Back to Home
+                </button>
+            </div>
+        </section>
+        <!-- /Game List Page --><!-- Game Iframe Page (data-page) --><section id="game-iframe" data-page="game-iframe" class="hidden">
+            <h2 class="text-4xl font-bold mb-4 text-center text-gray-900" id="iframe-game-name">Loading Game...</h2>
+            <div class="flex justify-center mb-6">
+                 <button class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg text-sm transition shadow-md" onclick="showPage('home')">
+                    &larr; Back to Home
+                </button>
+            </div>
+            <div class="w-full h-[80vh] bg-gray-100 rounded-xl shadow-inner border border-gray-300 overflow-hidden">
+                <iframe id="game-iframe-element" src="" frameborder="0" class="w-full h-full" allowfullscreen></iframe>
+            </div>
+            <p class="text-sm text-gray-500 mt-3 text-center">**Important:** Some games might require clicking a link inside the iframe, or may not load if their domain is blocked by your school network.</p>
+        </section>
+        <!-- /Game Iframe Page --><!-- About Page (data-page) --><section id="about" data-page="about" class="hidden">
+            <h2 class="text-4xl font-extrabold mb-8 text-primary-red">About Westpine.fun</h2>
+            <div class="space-y-6 text-lg max-w-3xl text-gray-700">
+                <p>Welcome to Westpine.fun! This project was created to provide students with access to high-quality, unblocked games that are normally filtered out by network restrictions.</p>
+                <p>We focus on responsive design and secure, unblocked methods to ensure smooth gameplay during study breaks.</p>
+                <p class="font-semibold text-primary-blue">This site is built entirely in a single HTML file using JavaScript and Tailwind CSS for portability and simplicity.</p>
+            </div>
+        </section>
+        <!-- /About Page --><!-- Changelog Page (data-page) --><section id="changelog" data-page="changelog" class="hidden">
+            <h2 class="text-4xl font-extrabold mb-8 text-primary-green">Changelog</h2>
+            <ul class="space-y-4 list-disc list-inside max-w-3xl text-gray-700">
+                <li class="p-3 bg-gray-100 rounded-lg border border-gray-200">
+                    <span class="font-bold text-primary-green">[V1.4 - Nov 2025]</span> **Game Refresh & List Fix:** Corrected game list to show all external games. Added a fresh selection of popular and unblocked-friendly games (Chess, Sudoku, Doodle Jump, Retro Bowl, etc.) with custom tile colors.
+                </li>
+                <li class="p-3 bg-gray-100 rounded-lg border border-gray-200">
+                    <span class="font-bold text-primary-green">[V1.3 - Nov 2025]</span> **List Update:** The "Game List" now displays *all* available games, including those with homepage tiles, for a complete index.
+                </li>
+                <li class="p-3 bg-gray-100 rounded-lg border border-gray-200">
+                    <span class="font-bold text-primary-green">[V1.2 - Nov 2025]</span> **Feature Update:** All primary games now have individual, clickable tiles on the homepage, linking directly to the game iframe. Added more mock games.
+                </li>
+            </ul>
+        </section>
+        <!-- /Changelog Page --><!-- Feedback Page (data-page) --><section id="feedback" data-page="feedback" class="hidden">
+            <h2 class="text-4xl font-extrabold mb-8 text-primary-blue">Suggestions & Feedback</h2>
+            <div class="max-w-xl space-y-4">
+                <p class="text-lg text-gray-600">Got a game you want to see unblocked? Let us know! (This is a placeholder form.)</p>
+
+                <form class="space-y-4 bg-gray-100 p-6 rounded-xl shadow-lg border border-gray-300">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700">Your Name (Optional)</label>
+                        <input type="text" id="name" class="mt-1 block w-full bg-white border-gray-300 rounded-md shadow-sm p-3 focus:ring-primary-blue focus:border-primary-blue text-gray-900">
+                    </div>
+                    <div>
+                        <label for="type" class="block text-sm font-medium text-gray-700">Feedback Type</label>
+                        <select id="type" class="mt-1 block w-full bg-white border-gray-300 rounded-md shadow-sm p-3 focus:ring-primary-blue focus:border-primary-blue text-gray-900">
+                            <option>New Game Suggestion</option>
+                            <option>Broken Link/Bug Report</option>
+                            <option>General Comment</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="message" class="block text-sm font-medium text-gray-700">Details</label>
+                        <textarea id="message" rows="4" class="mt-1 block w-full bg-white border-gray-300 rounded-md shadow-sm p-3 focus:ring-primary-blue focus:border-primary-blue text-gray-900"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-primary-blue hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+                        Submit Feedback (Placeholder)
+                    </button>
+                    <p class="text-xs text-center text-red-500">This form is a mockup and does not actually send data yet.</p>
+                </form>
+            </div>
+        </section>
+        <!-- /Feedback Page --></main>
+
+    <script>
+        // Simple mobile menu toggle functionality
+        document.getElementById('mobile-menu-toggle').addEventListener('click', function() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        });
+    </script>
+</body>
+</html>
